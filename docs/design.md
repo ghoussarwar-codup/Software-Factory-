@@ -1,6 +1,6 @@
 # Software Factory design
 
-Status: Proposed for approval
+Status: Approved
 
 ## Product and repository boundary
 
@@ -9,6 +9,12 @@ Software Factory takes greenfield projects from a business requirements document
 The public repository contains this design and the implementation plan. The desktop application and canonical project kit belong in a separate private repository based on Munder Difflin main at `c1eac0d2` (source version 0.6.0). The team currently runs 0.5.10. The app installs a versioned copy of the kit into each generated project at setup. The kit contains Claude Code and Codex gate hooks, stage rules, Git hooks, CI templates and a PR template. Public artifacts must exclude client and project names, real ticket keys, internal hostnames and runner names, secret names and paths, private data, and upstream source code.
 
 The pinned baseline restores eligible worker entries as sleeping at startup. Its worker reaper defaults to about 20 minutes without terminal output and applies token caps when configured. Its message delivery waits for an idle, safe prompt. The existing project-local stage policy is separate from the upstream runtime. Today the worker receives a stage marker at launch and a malformed marker can silently block all tools. The fork will reuse worker launch and worktree capabilities and add durable job recovery and explicit policy validation.
+
+## Factory development and staging checkpoint
+
+Develop the desktop app and project kit test-first. Write unit and integration tests before each behavior change and run both suites in CI on the private implementation repository. Apply the same PR merge rules as generated projects, including green CI on the exact PR head and combined commit against current main, protected main, and human-only merge.
+
+Stop after plan step 2, when the first story is human-merged and running in AWS staging. Present its approval, acceptance test, review, CI and staging evidence for review. Step 3 requires explicit approval at this checkpoint.
 
 ## Desktop app and evidence
 
@@ -49,6 +55,8 @@ Windows 11 is the pilot platform, followed by macOS and then Linux. Workers and 
 
 Use existing team Claude and Codex accounts for the internal pilot. Give each worker only the project context required for its job. Keep provider credentials out of briefs, worktrees, reports and logs. The app excludes credentials, environment files and other sensitive inputs from worker-visible material, limits file access to approved context, and redacts secrets from test output and logs before model access. Use synthetic fixtures in tests. Secrets must never be sent to a model.
 
+**Known pilot limit.** Only one Codex session can run at a time. Codex reviews queue behind active Codex builds, fixes or reviews. Revisit this limit after the pilot.
+
 Keep one authoritative Codex login for the desktop user. A single managed Codex session at a time uses provider-managed refresh in the protected login home, with job worktrees and conversation state scoped to the job. Do not depend on a worker copying a refreshed login back at exit. Preflight login health and verify recovery from forced termination during or after refresh. If provider auth becomes invalid, pause with a reauthentication prompt and resume the durable job after login. Provider credentials are available only to the provider runtime through its supported login path.
 
 Before any client project starts, require a project data policy at setup and display it in the project view. It names allowed providers, account requirements, retention or no-training settings, and prohibited content such as secrets, environment files and personal data in fixtures. Dispatch validates policy and blocks if requirements cannot be verified. This client-use control is outside the internal pilot milestone.
@@ -67,6 +75,8 @@ Setup detects the provider plan where available and reads effective repository a
 [GitHub merge queue availability](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue) · [GitHub environment protection availability](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 
 ## AWS release and rollback
+
+The pilot organization’s GitHub plan is unconfirmed. Proceed through staging. Before plan step 4, the product owner chooses one of three paths once the plan is confirmed: use Enterprise Cloud with a private pilot repository, use a public pilot repository with no private material and verified required reviewers, or end the pilot at staging. Changing pilot repository visibility requires a separate explicit decision. The private factory implementation repository stays private. Production requires verified enforcement of human deployment reviewers regardless of the path.
 
 Confirm the fixed target stack for generated software. A TypeScript pnpm monorepo keeps shared types, tests and CI conventions consistent. A Node API with Prisma and PostgreSQL gives a standard persistence and migration path. React and Playwright standardize UI and browser coverage. Redis supports background work, including the pilot’s job. AWS provides managed deployment, logs, monitoring and database backups. Redis and the managed services add cost and operational surface, which the single kit and runbook must make visible. A second stack would multiply the gate and deployment combinations before the team proves the first.
 
